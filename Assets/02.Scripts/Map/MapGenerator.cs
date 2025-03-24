@@ -1,59 +1,46 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class MapGenerator : MonoBehaviour
 {
-    public GameObject floorPrefab;      
-    public GameObject enemyPrefab;
+    public GameObject floorPrefab;
 
     [Header("Map Settings")]
-    public int roomCount = 15;      //방 개수
-    public int renderRadius = 8;        //렌더링할 범위
+    public int roomCount = 10;
+    public float defaultRoomSize = 5f;
 
     [HideInInspector] public HashSet<Vector2Int> floorPositions = new();
-    [HideInInspector] public Dictionary<Vector2Int, RoomData> roomDataMap = new();
+    private List<RoomNode> roomNodes = new();
 
-    private Dictionary<Vector2Int, GameObject> renderedTiles = new();
 
-    //방 정보
-    public class RoomData
+    /// <summary>
+    /// 새 맵 생성하기
+    /// </summary>
+    /// <param name="startPos"></param>
+    public void GenerateNewFloor(Vector2Int startPos)
     {
-        public Vector2Int pos;
-        public List<Vector3> enemyOffsets = new();
-    }
-
-    public void GenerateFloor(Vector2Int startPos)
-    {
-        foreach (var obj in renderedTiles.Values) Destroy(obj);
-        renderedTiles.Clear();
         floorPositions.Clear();
-        roomDataMap.Clear();
+        roomNodes.Clear();
 
-        List<RoomNode> rooms = new();
         System.Random rand = new();
 
+        // 1. 방 생성
         for (int i = 0; i < roomCount; i++)
         {
             Vector2Int pos = new(rand.Next(-20, 20), rand.Next(-20, 20));
-            rooms.Add(new RoomNode(pos));
+            if (floorPositions.Contains(pos)) continue;
+
+            RoomNode room = new RoomNode(pos, defaultRoomSize);
+            roomNodes.Add(room);
             floorPositions.Add(pos);
-
-            RoomData room = new RoomData { position = pos };
-            int enemyCount = Random.Range(1, 4);
-            for (int j = 0; j < enemyCount; j++)
-            {
-                room.enemyOffsets.Add(new Vector3(Random.Range(-1f, 1f), 0, Random.Range(-1f, 1f)));
-            }
-
-            roomDataMap[pos] = room;
         }
 
-        var edges = DungeonConnector.ConnectRoomsKruskal(rooms);
-        foreach (var edge in edges) ConnectRooms(edge.a.position, edge.b.position);
+        // 2. MST로 방 연결
+        var edges = DungeonConnector.ConnectRoomsKruskal(roomNodes);
+        foreach (var edge in edges) ConnectRooms(edge.a.pos, edge.b.pos);
     }
 
-    // 직선 통로로 바닥 연결
+    // 3. 두 방을 ㄱ자 형태로 연결 (바닥 타일 위치만 추가)
     void ConnectRooms(Vector2Int a, Vector2Int b)
     {
         Vector2Int pos = a;
@@ -69,33 +56,27 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    // 플레이어 주변만 렌더링
-    public void UpdateVisibleArea(Vector2Int playerPos)
+    // 4. 플레이어가 들어간 방 노드 판정
+    public RoomNode GetCurrentRoomNode(Vector3 playerPos)
     {
-        foreach (var pos in floorPositions)
+        foreach (var room in roomNodes)
         {
-            bool visible = Vector2Int.Distance(playerPos, pos) <= renderRadius;
-
-            if (visible && !renderedTiles.ContainsKey(pos))
+            if (IsInsideRoom(playerPos, room))
             {
-                GameObject tile = Instantiate(floorPrefab, new Vector3(pos.x, 0, pos.y), Quaternion.identity);
-                renderedTiles[pos] = tile;
-
-                // 방이면 적 생성
-                if (roomDataMap.ContainsKey(pos))
-                {
-                    foreach (var offset in roomDataMap[pos].enemyOffsets)
-                    {
-                        GameObject enemy = Instantiate(enemyPrefab, tile.transform.position + offset, Quaternion.identity);
-                        enemy.tag = "Enemy";
-                    }
-                }
-            }
-            else if (!visible && renderedTiles.ContainsKey(pos))
-            {
-                Destroy(renderedTiles[pos]);
-                renderedTiles.Remove(pos);
+                return room;
             }
         }
+        return null;
     }
+
+    public bool IsInsideRoom(Vector3 playerPos, RoomNode room)
+    {
+        float half = room.size / 2f;
+        Vector3 center = new Vector3(room.pos.x, 0, room.pos.y);
+
+        return (playerPos.x >= center.x - half && playerPos.x <= center.x + half &&
+                playerPos.z >= center.z - half && playerPos.z <= center.z + half);
+    }
+
+    public List<RoomNode> GetAllRooms() => roomNodes;
 }
