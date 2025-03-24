@@ -14,7 +14,7 @@ public class MapGenerator : MonoBehaviour
     public int renderRadius = 8;
 
     [HideInInspector] public HashSet<Vector2Int> floorPositions = new();
-    private List<RoomNode> roomNodes = new();
+    public List<RoomNode> roomNodes = new();
     public Dictionary<Vector2Int, RoomData> roomDataMap = new();
     private Dictionary<Vector2Int, GameObject> renderedTiles = new();
 
@@ -32,6 +32,7 @@ public class MapGenerator : MonoBehaviour
     {
         floorPositions.Clear();
         roomDataMap.Clear();
+        roomNodes.Clear();
         roomNodes.Clear();
 
         System.Random rand = new();
