@@ -58,13 +58,8 @@ public class PlayerAutoExplorer : MonoBehaviour
         else
         {
             dfsStack.Pop();
-
-            if (IsAllVisited())
-            {
-                Debug.Log("모든 방 탐험 완료!");
-                // GameManager.Instance.OnFloorCleared?.Invoke();
-            }
-            else if (cameFrom.Count > 0)
+            Debug.Log(visitedRoom.Count);
+           if (cameFrom.Count > 0)
             {
                 StartCoroutine(MoveToRoom(cameFrom.Pop()));
             }
@@ -82,6 +77,14 @@ public class PlayerAutoExplorer : MonoBehaviour
 
         while (Vector3.Distance(transform.position, target) > 0.05f)
         {
+            //플레이어 방향도 회전
+            Vector3 dir = (target - transform.position).normalized;
+            if (dir != Vector3.zero)
+            {
+                Quaternion rot = Quaternion.LookRotation(dir);
+                transform.rotation = Quaternion.Slerp(transform.rotation, rot, 10f * Time.deltaTime);
+            }
+
             transform.position = Vector3.MoveTowards(transform.position, target, player.moveSpeed * Time.deltaTime);
             yield return null;
         }
@@ -107,6 +110,13 @@ public class PlayerAutoExplorer : MonoBehaviour
         {
             StartCoroutine(CombatCoroutine(room));
         }
+
+        if (IsAllVisited())
+        {
+            Debug.Log("모든 방 탐험 완료!");
+            // GameManager.Instance.OnFloorCleared?.Invoke();
+        }
+
     }
 
     private IEnumerator CombatCoroutine(RoomData room)

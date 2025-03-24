@@ -21,14 +21,13 @@ public class MapGenerator : MonoBehaviour
 
     private void Start()
     {
-        GenerateNewFloor(Vector2Int.zero); // 시작 좌표 기준으로 생성
+        GenerateNewFloor();
         RenderAll();
     }
     /// <summary>
     /// 새 맵 생성하기
     /// </summary>
-    /// <param name="startPos"></param>
-    public void GenerateNewFloor(Vector2Int startPos)
+    public void GenerateNewFloor()
     {
         floorPositions.Clear();
         roomDataMap.Clear();
@@ -69,15 +68,15 @@ public class MapGenerator : MonoBehaviour
             {
                 pos = pos,
                 interialNum = Random.Range(0, interiorPrefabs.Count),
-                enemies = new List<EnemyData>()
+                enemies = new List<Enemy>()
             };
 
             int enemyCount = Random.Range(1, 4);
             for (int j = 0; j < enemyCount; j++)
             {
-                roomData.enemies.Add(new EnemyData
+                roomData.enemies.Add(new Enemy
                 {
-                    type = "Goblin",
+                    characterName = "Goblin",
                     offsetPos = new Vector3(Random.Range(-1f, 1f), 0, Random.Range(-1f, 1f))
                 });
             }
@@ -129,7 +128,7 @@ public class MapGenerator : MonoBehaviour
 
                     foreach (var enemy in room.enemies)
                     {
-                        GameObject prefabEnemy = enemyPrefabs.Find(e => e.name == enemy.type);
+                        GameObject prefabEnemy = enemyPrefabs.Find(e => e.name == enemy.characterName);
                         if (prefabEnemy != null)
                             Instantiate(prefabEnemy, tile.transform.position + enemy.offsetPos, Quaternion.identity);
                     }
@@ -191,7 +190,7 @@ public class MapGenerator : MonoBehaviour
 
                     foreach (var enemy in room.enemies)
                     {
-                        GameObject prefabEnemy = enemyPrefabs.Find(e => e.name == enemy.type);
+                        GameObject prefabEnemy = enemyPrefabs.Find(e => e.name == enemy.characterName);
                         if (prefabEnemy != null)
                             Instantiate(prefabEnemy, tile.transform.position + enemy.offsetPos, Quaternion.identity);
                     }
