@@ -3,24 +3,30 @@
 [System.Serializable]
 public class Enemy : CharacterBase
 {
-    public int rewardExp;
-    public int rewardGold;
+    public EnemyData data;
     public Vector3 offsetPos;
 
-    public GameObject linkedObject;
+    private void Awake()
+    {
+        Init(); // 프리팹 생성 시 자동 초기화
+    }
 
     public override void Init()
     {
-        // 이미 데이터 주입 받는 경우엔 생략 가능
-        // condition = new Condition(50, 10, 2);
+        if (data != null)
+        {
+            characterName = data.characterName;
+            condition = new Condition(data.maxHp, data.atk, data.def, data.attackCooldown);
+        }
+        else
+        {
+            Debug.LogWarning($"EnemyData가 설정되지 않았습니다. ({gameObject.name})");
+        }
     }
 
     public override void OnDefeated()
     {
         Debug.Log($"{characterName} 처치됨");
-        if (linkedObject != null)
-        {
-            GameObject.Destroy(linkedObject); // 진짜 GameObject 제거
-        }
+        Destroy(gameObject);
     }
 }

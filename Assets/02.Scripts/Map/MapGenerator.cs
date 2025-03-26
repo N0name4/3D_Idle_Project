@@ -5,8 +5,8 @@ public class MapGenerator : MonoBehaviour
 {
     public GameObject roomFloorPrefab;
     public GameObject pathFloorPrefab;
-    public List<GameObject> enemyPrefabs;
     public List<GameObject> interiorPrefabs;
+    public Transform navMeshParent;
 
     [Header("Map Settings")]
     public int roomCount = 10;
@@ -18,12 +18,6 @@ public class MapGenerator : MonoBehaviour
     public Dictionary<Vector2Int, RoomData> roomDataMap = new();
     private Dictionary<Vector2Int, GameObject> renderedTiles = new();
 
-
-    private void Start()
-    {
-        GenerateNewFloor();
-        RenderAll();
-    }
     /// <summary>
     /// 새 맵 생성하기
     /// </summary>
@@ -31,7 +25,6 @@ public class MapGenerator : MonoBehaviour
     {
         floorPositions.Clear();
         roomDataMap.Clear();
-        roomNodes.Clear();
         roomNodes.Clear();
 
         System.Random rand = new();
@@ -68,17 +61,17 @@ public class MapGenerator : MonoBehaviour
             {
                 pos = pos,
                 interialNum = Random.Range(0, interiorPrefabs.Count),
-                enemies = new List<Enemy>()
+                enemies = new List<(string characterName, Vector3 offsetPos)>()
             };
 
+            // 적 스폰 정보만 생성하고 Enemy 인스턴스는 나중에 Spawner가 담당
+            string[] enemyTypes = { "Goblin", "Orc", "Slime" };
             int enemyCount = Random.Range(1, 4);
             for (int j = 0; j < enemyCount; j++)
             {
-                roomData.enemies.Add(new Enemy
-                {
-                    characterName = "Goblin",
-                    offsetPos = new Vector3(Random.Range(-1f, 1f), 0, Random.Range(-1f, 1f))
-                });
+                string type = enemyTypes[Random.Range(0, enemyTypes.Length)];
+                Vector3 offset = new Vector3(Random.Range(-2f, 2f), 0, Random.Range(-2f, 2f));
+                roomData.enemies.Add((type, offset));
             }
 
             roomDataMap[pos] = roomData;
@@ -119,23 +112,16 @@ public class MapGenerator : MonoBehaviour
             if (visible && !renderedTiles.ContainsKey(pos))
             {
                 GameObject prefab = roomDataMap.ContainsKey(pos) ? roomFloorPrefab : pathFloorPrefab;
-                GameObject tile = Instantiate(prefab, new Vector3(pos.x, 0, pos.y), Quaternion.identity);
+                GameObject tile = Instantiate(prefab, new Vector3(pos.x, 0, pos.y), Quaternion.identity, navMeshParent);
                 renderedTiles[pos] = tile;
 
                 if (roomDataMap.ContainsKey(pos))
                 {
                     RoomData room = roomDataMap[pos];
 
-                    foreach (var enemy in room.enemies)
-                    {
-                        GameObject prefabEnemy = enemyPrefabs.Find(e => e.name == enemy.characterName);
-                        if (prefabEnemy != null)
-                            Instantiate(prefabEnemy, tile.transform.position + enemy.offsetPos, Quaternion.identity);
-                    }
-
                     if (room.interialNum >= 0 && room.interialNum < interiorPrefabs.Count)
                     {
-                        Instantiate(interiorPrefabs[room.interialNum], tile.transform.position, Quaternion.identity);
+                        Instantiate(interiorPrefabs[room.interialNum], tile.transform.position, Quaternion.identity, navMeshParent);
                     }
                 }
             }
@@ -181,23 +167,16 @@ public class MapGenerator : MonoBehaviour
             if (!renderedTiles.ContainsKey(pos))
             {
                 GameObject prefab = roomDataMap.ContainsKey(pos) ? roomFloorPrefab : pathFloorPrefab;
-                GameObject tile = Instantiate(prefab, new Vector3(pos.x, 0, pos.y), Quaternion.identity);
+                GameObject tile = Instantiate(prefab, new Vector3(pos.x, 0, pos.y), Quaternion.identity, navMeshParent);
                 renderedTiles[pos] = tile;
 
                 if (roomDataMap.ContainsKey(pos))
                 {
                     RoomData room = roomDataMap[pos];
 
-                    foreach (var enemy in room.enemies)
-                    {
-                        GameObject prefabEnemy = enemyPrefabs.Find(e => e.name == enemy.characterName);
-                        if (prefabEnemy != null)
-                            Instantiate(prefabEnemy, tile.transform.position + enemy.offsetPos, Quaternion.identity);
-                    }
-
                     if (room.interialNum >= 0 && room.interialNum < interiorPrefabs.Count)
                     {
-                        Instantiate(interiorPrefabs[room.interialNum], tile.transform.position, Quaternion.identity);
+                        Instantiate(interiorPrefabs[room.interialNum], tile.transform.position, Quaternion.identity, navMeshParent);
                     }
                 }
             }

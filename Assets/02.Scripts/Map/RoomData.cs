@@ -1,5 +1,4 @@
 ﻿
-//방 정보
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -10,5 +9,5 @@ public class RoomData
 {
     public Vector2Int pos;
     public int interialNum; // 방 내부 장식 정보
-    public List<Enemy> enemies = new();
+    public List<(string characterName, Vector3 offsetPos)> enemies = new();
 }

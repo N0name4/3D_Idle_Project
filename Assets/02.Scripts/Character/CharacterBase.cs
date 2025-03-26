@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public abstract class CharacterBase
+public abstract class CharacterBase : MonoBehaviour
 {
     public string characterName;
     public Condition condition;

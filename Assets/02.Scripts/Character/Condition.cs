@@ -8,13 +8,15 @@ public class Condition
     public int currentHp;
     public int atk;
     public int def;
+    public float atkCoolDown;
 
-    public Condition(int hp, int atk, int def)
+    public Condition(int hp, int atk, int def, float atkCoolDown)
     {
         this.maxHp = hp;
         this.currentHp = hp;
         this.atk = atk;
         this.def = def;
+        this.atkCoolDown = atkCoolDown;
     }
 
     public void Heal(int amount)

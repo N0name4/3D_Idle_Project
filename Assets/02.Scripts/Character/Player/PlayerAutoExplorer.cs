@@ -5,7 +5,7 @@ using UnityEngine;
 public class PlayerAutoExplorer : MonoBehaviour
 {
     public MapGenerator mapGenerator;
-    public Player player = new();
+    public Player player;
 
     private Stack<Vector2Int> dfsStack = new();
     private HashSet<Vector2Int> visited = new();
@@ -14,11 +14,14 @@ public class PlayerAutoExplorer : MonoBehaviour
     private bool isMoving = false;
     private bool isFighting = false;
 
+    EnemySpawner enemySpawner;
+
     IEnumerator Start()
     {
+        player = GameManager.Instance.player;
+        enemySpawner = GameManager.Instance.enemySpawner;
         yield return new WaitUntil(() => mapGenerator.GetAllRooms().Count > 0);
 
-        player.Init();
 
         Vector2Int start = mapGenerator.GetAllRooms()[0].pos;
         transform.position = new Vector3(start.x, 0.5f, start.y);
@@ -58,7 +61,6 @@ public class PlayerAutoExplorer : MonoBehaviour
         else
         {
             dfsStack.Pop();
-            Debug.Log(visitedRoom.Count);
            if (cameFrom.Count > 0)
             {
                 StartCoroutine(MoveToRoom(cameFrom.Pop()));
@@ -118,15 +120,86 @@ public class PlayerAutoExplorer : MonoBehaviour
         }
 
     }
-
     private IEnumerator CombatCoroutine(RoomData room)
     {
         isFighting = true;
-        Debug.Log($"전투 시작: {room.enemies.Count}명의 적");
-        yield return new WaitForSeconds(1f); // 전투 연출 시간
-        room.enemies.Clear();
-        Debug.Log("전투 완료");
+
+        List<Enemy> roomEnemies = new List<Enemy>(enemySpawner.GetEnemiesInRoom(room.pos));
+
+        if (roomEnemies.Count == 0)
+        {
+            Debug.Log("전투할 적이 없음");
+            isFighting = false;
+            yield break;
+        }
+
+        foreach (Enemy targetEnemy in roomEnemies)
+        {
+            if (targetEnemy == null) continue;
+            if (player.condition.currentHp <= 0) break;
+
+            Debug.Log($"⚔️ {targetEnemy.characterName} 와 전투 시작!");
+
+            float playerTimer = 0f;
+            float enemyTimer = 0f;
+
+            while (player.condition.currentHp > 0 && targetEnemy.condition.currentHp > 0)
+            {
+                Vector3 directionToEnemy = targetEnemy.transform.position - transform.position;
+                directionToEnemy.y = 0f;
+
+                if (directionToEnemy != Vector3.zero)
+                {
+                    Quaternion rot = Quaternion.LookRotation(directionToEnemy);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, rot, 10f * Time.deltaTime);
+                }
+
+                yield return null;
+
+                playerTimer += Time.deltaTime;
+                enemyTimer += Time.deltaTime;
+
+                // 플레이어 턴
+                if (playerTimer >= player.condition.atkCoolDown)
+                {
+                    playerTimer = 0f;
+                    bool enemyDead = targetEnemy.condition.TakeDamage(player.condition.atk);
+                    Debug.Log($"🗡 {player.characterName} ▶ {targetEnemy.characterName} 공격! 남은 HP: {targetEnemy.condition.currentHp}");
+
+                    if (enemyDead)
+                    {
+                        player.GainReward(targetEnemy.data.rewardExp, targetEnemy.data.rewardGold);
+
+                        Debug.Log($"☠️ {targetEnemy.characterName} 처치됨!");
+                        targetEnemy.OnDefeated();
+                        enemySpawner.RemoveEnemy(room.pos, targetEnemy);
+                        break;
+                    }
+                }
+
+                // 적 턴
+                if (enemyTimer >= targetEnemy.condition.atkCoolDown)
+                {
+                    enemyTimer = 0f;
+                    bool playerDead = player.condition.TakeDamage(targetEnemy.condition.atk);
+                    Debug.Log($"{targetEnemy.characterName} ▶ {player.characterName} 공격! 남은 HP: {player.condition.currentHp}");
+
+                    if (playerDead)
+                    {
+                        Debug.Log($"💀 {player.characterName} 사망! 게임 오버!");
+                        isFighting = false;
+                        yield break;
+                    }
+                }
+            }
+
+            yield return new WaitForSeconds(0.3f); // 다음 적과의 전투 전 딜레이
+        }
+
+        Debug.Log("방의 모든 적 처치 완료!");
         isFighting = false;
+
+        TryClear();
     }
 
     List<Vector2Int> GetNeighbors(Vector2Int pos)
@@ -147,5 +220,46 @@ public class PlayerAutoExplorer : MonoBehaviour
         }
 
         return results;
+    }
+
+    bool IsAllEnemiesDefeated()
+    {
+        foreach (var list in enemySpawner.activeEnemiesByRoom.Values)
+        {
+            if (list.Count > 0)
+                return false;
+        }
+        return true;
+    }
+
+
+    void TryClear()
+    {
+        if (IsAllVisited() && IsAllEnemiesDefeated())
+        {
+            Debug.Log("던전 클리어! 다음 층으로 이동...");
+            StartCoroutine(GoToNextFloor());
+        }
+    }
+
+    IEnumerator GoToNextFloor()
+    {
+        yield return new WaitForSeconds(2f);
+
+        GameManager.Instance.currentFloor++;
+        GameManager.Instance.CreateNewFloor();
+
+        // DFS 관련 상태 초기화
+        dfsStack.Clear();
+        visited.Clear();
+        visitedRoom.Clear();
+        cameFrom.Clear();
+
+        // 플레이어 시작 위치
+        Vector2Int start = mapGenerator.GetAllRooms()[0].pos;
+        transform.position = new Vector3(start.x, 0.5f, start.y);
+        dfsStack.Push(start);
+
+        Debug.Log("다음 층 시작!");
     }
 }
